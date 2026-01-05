@@ -81,8 +81,10 @@ impl App {
                     if damage > 0 {
                         // Check if player can survive
                         if !self.game.player.can_survive(damage) {
-                            self.state = AppState::Defeat("Cannot survive enemy attack!".to_string());
-                            self.game.game_state = GameState::Defeat("Cannot survive enemy attack!".to_string());
+                            self.state =
+                                AppState::Defeat("Cannot survive enemy attack!".to_string());
+                            self.game.game_state =
+                                GameState::Defeat("Cannot survive enemy attack!".to_string());
                         } else {
                             self.state = AppState::DiscardPhase {
                                 required_damage: damage,
@@ -105,7 +107,8 @@ impl App {
                 if damage > 0 {
                     if !self.game.player.can_survive(damage) {
                         self.state = AppState::Defeat("Cannot survive enemy attack!".to_string());
-                        self.game.game_state = GameState::Defeat("Cannot survive enemy attack!".to_string());
+                        self.game.game_state =
+                            GameState::Defeat("Cannot survive enemy attack!".to_string());
                     } else {
                         self.state = AppState::DiscardPhase {
                             required_damage: damage,
@@ -224,7 +227,7 @@ fn run_app<B: ratatui::backend::Backend>(
                     KeyCode::Char(c) if c.is_ascii_digit() => {
                         let digit = c.to_digit(10).unwrap() as usize;
                         // Convert 1-8 to indices 0-7 (1-based numbering for user)
-                        if digit >= 1 && digit <= 8 {
+                        if (1..=8).contains(&digit) {
                             app.toggle_card_selection(digit - 1);
                         }
                     }
@@ -243,7 +246,7 @@ fn run_app<B: ratatui::backend::Backend>(
                     KeyCode::Char(c) if c.is_ascii_digit() => {
                         let digit = c.to_digit(10).unwrap() as usize;
                         // Convert 1-8 to indices 0-7 (1-based numbering for user)
-                        if digit >= 1 && digit <= 8 {
+                        if (1..=8).contains(&digit) {
                             app.toggle_card_selection(digit - 1);
                         }
                     }

@@ -34,10 +34,10 @@ pub enum Rank {
     Eight,
     Nine,
     Ten,
-    Ace,        // Animal Companion
-    Jack,       // Enemy
-    Queen,      // Enemy
-    King,       // Enemy
+    Ace,   // Animal Companion
+    Jack,  // Enemy
+    Queen, // Enemy
+    King,  // Enemy
     Jester,
 }
 
@@ -55,9 +55,9 @@ impl Rank {
             Rank::Eight => 8,
             Rank::Nine => 9,
             Rank::Ten => 10,
-            Rank::Jack => 10,    // When drawn as a card in hand
-            Rank::Queen => 15,   // When drawn as a card in hand
-            Rank::King => 20,    // When drawn as a card in hand
+            Rank::Jack => 10,  // When drawn as a card in hand
+            Rank::Queen => 15, // When drawn as a card in hand
+            Rank::King => 20,  // When drawn as a card in hand
             Rank::Jester => 0,
         }
     }

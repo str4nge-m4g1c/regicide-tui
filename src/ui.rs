@@ -62,16 +62,21 @@ fn render_castle(f: &mut Frame, area: Rect, game: &Game) {
         if enemy.immunity_cancelled {
             text.push_line(Span::styled(
                 "⚠ Immunity Cancelled",
-                Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
             ));
         } else {
             text.push_line(Span::styled(
-                format!("Immune to: {}", match enemy.card.suit {
-                    crate::card::Suit::Hearts => "Hearts ♥",
-                    crate::card::Suit::Diamonds => "Diamonds ♦",
-                    crate::card::Suit::Clubs => "Clubs ♣",
-                    crate::card::Suit::Spades => "Spades ♠",
-                }),
+                format!(
+                    "Immune to: {}",
+                    match enemy.card.suit {
+                        crate::card::Suit::Hearts => "Hearts ♥",
+                        crate::card::Suit::Diamonds => "Diamonds ♦",
+                        crate::card::Suit::Clubs => "Clubs ♣",
+                        crate::card::Suit::Spades => "Spades ♠",
+                    }
+                ),
                 Style::default().fg(Color::Gray),
             ));
         }
@@ -102,7 +107,9 @@ fn render_battlefield(f: &mut Frame, area: Rect, game: &Game) {
         let cards: Vec<String> = game.played_cards.iter().map(|c| c.display()).collect();
         text.push_line(Span::styled(
             format!("Played: {}", cards.join(" ")),
-            Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
         ));
     }
 
@@ -159,12 +166,7 @@ fn render_hand(f: &mut Frame, area: Rect, game: &Game, selected_cards: &[usize])
     }
 
     // Generate ASCII art for each card
-    let card_arts: Vec<Vec<String>> = game
-        .player
-        .hand
-        .iter()
-        .map(|card| render_card_small(card))
-        .collect();
+    let card_arts: Vec<Vec<String>> = game.player.hand.iter().map(render_card_small).collect();
 
     // Number of lines in a card (should be 5)
     let card_height = 5;
@@ -206,7 +208,9 @@ fn render_hand(f: &mut Frame, area: Rect, game: &Game, selected_cards: &[usize])
     for card_idx in 0..game.player.hand.len() {
         let is_selected = selected_cards.contains(&card_idx);
         let style = if is_selected {
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(Color::Gray)
         };
@@ -303,12 +307,16 @@ pub fn render_victory(f: &mut Frame, game: &Game) {
         Line::from(""),
         Line::from(Span::styled(
             "All enemies have been defeated!",
-            Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Green)
+                .add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
         Line::from(Span::styled(
             format!("Victory Rank: {} ⭐", rank),
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
         )),
         Line::from(Span::styled(
             format!("Jesters Used: {}/{}", game.jesters_used, game.jester_count),
@@ -339,10 +347,7 @@ pub fn render_defeat(f: &mut Frame, reason: &str) {
             Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
-        Line::from(Span::styled(
-            reason,
-            Style::default().fg(Color::White),
-        )),
+        Line::from(Span::styled(reason, Style::default().fg(Color::White))),
         Line::from(""),
         Line::from("Press 'q' to quit"),
     ]);
@@ -379,9 +384,7 @@ pub fn render_help(f: &mut Frame) {
         Line::from("Press 'h' to close help"),
     ]);
 
-    let paragraph = Paragraph::new(text)
-        .block(block)
-        .wrap(Wrap { trim: true });
+    let paragraph = Paragraph::new(text).block(block).wrap(Wrap { trim: true });
 
     // Create a centered area
     let area = centered_rect(60, 70, f.area());

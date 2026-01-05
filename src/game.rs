@@ -19,12 +19,12 @@ pub struct Game {
     pub current_enemy: Option<Enemy>,
     pub player: Player,
     pub played_cards: Vec<Card>,
-    pub shield_value: u8,        // Cumulative shield from Spades
-    pub total_damage: u8,        // Total damage dealt to current enemy
+    pub shield_value: u8, // Cumulative shield from Spades
+    pub total_damage: u8, // Total damage dealt to current enemy
     pub game_state: GameState,
     pub game_log: Vec<String>,
-    pub jester_count: u8,        // For solo mode
-    pub jesters_used: u8,        // For solo mode
+    pub jester_count: u8, // For solo mode
+    pub jesters_used: u8, // For solo mode
 }
 
 impl Game {
@@ -163,7 +163,11 @@ impl Game {
 
         // Log the play
         let card_names: Vec<String> = cards.iter().map(|c| c.display()).collect();
-        self.log(format!("Played: {} (Attack: {})", card_names.join(", "), attack_value));
+        self.log(format!(
+            "Played: {} (Attack: {})",
+            card_names.join(", "),
+            attack_value
+        ));
 
         // Apply suit powers (Step 2)
         self.apply_suit_powers(&cards, attack_value)?;
@@ -179,8 +183,7 @@ impl Game {
 
     /// Apply suit powers to the cards played
     fn apply_suit_powers(&mut self, cards: &[Card], attack_value: u8) -> Result<(), String> {
-        let enemy = self.current_enemy.as_ref()
-            .ok_or("No current enemy")?;
+        let enemy = self.current_enemy.as_ref().ok_or("No current enemy")?;
 
         // Collect suits and check immunity
         let mut hearts_power = 0;
@@ -209,7 +212,9 @@ impl Game {
                     if !enemy.is_immune_to(Suit::Clubs) {
                         clubs_active = true;
                     } else {
-                        log_messages.push("Clubs power blocked by immunity (double damage negated)".to_string());
+                        log_messages.push(
+                            "Clubs power blocked by immunity (double damage negated)".to_string(),
+                        );
                     }
                 }
                 Suit::Spades => {
@@ -242,7 +247,10 @@ impl Game {
 
                 // Add to bottom of tavern deck
                 self.tavern_deck.add_multiple_to_bottom(healed);
-                self.log(format!("Healed {} cards from discard to tavern deck", heal_count));
+                self.log(format!(
+                    "Healed {} cards from discard to tavern deck",
+                    heal_count
+                ));
             }
         }
 
@@ -272,7 +280,10 @@ impl Game {
         // Apply Spades (shield - cumulative)
         if spades_power > 0 {
             self.shield_value += spades_power;
-            self.log(format!("Shield increased by {} (Total: {})", spades_power, self.shield_value));
+            self.log(format!(
+                "Shield increased by {} (Total: {})",
+                spades_power, self.shield_value
+            ));
         }
 
         Ok(())
@@ -280,13 +291,13 @@ impl Game {
 
     /// Deal damage to the enemy (Step 3)
     fn deal_damage(&mut self, mut attack_value: u8) -> Result<(), String> {
-        let enemy = self.current_enemy.as_mut()
-            .ok_or("No current enemy")?;
+        let enemy = self.current_enemy.as_mut().ok_or("No current enemy")?;
 
         // Check if clubs were played (check in played_cards for this turn)
-        let clubs_played = self.played_cards.iter().any(|c| {
-            c.suit == Suit::Clubs && !enemy.is_immune_to(Suit::Clubs)
-        });
+        let clubs_played = self
+            .played_cards
+            .iter()
+            .any(|c| c.suit == Suit::Clubs && !enemy.is_immune_to(Suit::Clubs));
 
         if clubs_played {
             attack_value *= 2;
@@ -299,8 +310,10 @@ impl Game {
         // Check if enemy is defeated
         let is_defeated = enemy.is_defeated();
 
-        self.log(format!("Dealt {} damage (Total: {}/{})",
-            attack_value, self.total_damage, max_hp));
+        self.log(format!(
+            "Dealt {} damage (Total: {}/{})",
+            attack_value, self.total_damage, max_hp
+        ));
 
         if is_defeated {
             self.enemy_defeated();
@@ -323,7 +336,7 @@ impl Game {
         }
 
         // Discard all played cards
-        self.discard_pile.extend(self.played_cards.drain(..));
+        self.discard_pile.append(&mut self.played_cards);
 
         // Reveal next enemy
         self.reveal_next_enemy();
@@ -337,8 +350,7 @@ impl Game {
 
     /// Enemy attacks (Step 4)
     pub fn enemy_attack(&mut self) -> Result<u8, String> {
-        let enemy = self.current_enemy.as_ref()
-            .ok_or("No current enemy")?;
+        let enemy = self.current_enemy.as_ref().ok_or("No current enemy")?;
 
         let damage = enemy.get_attack_after_shields(self.shield_value);
 
@@ -354,18 +366,24 @@ impl Game {
     /// Discard cards to survive enemy attack
     pub fn discard_to_survive(&mut self, card_indices: Vec<usize>) -> Result<(), String> {
         let value = self.player.calculate_value(&card_indices);
-        let enemy = self.current_enemy.as_ref()
-            .ok_or("No current enemy")?;
+        let enemy = self.current_enemy.as_ref().ok_or("No current enemy")?;
         let required = enemy.get_attack_after_shields(self.shield_value);
 
         if value < required {
-            return Err(format!("Not enough value (need {}, have {})", required, value));
+            return Err(format!(
+                "Not enough value (need {}, have {})",
+                required, value
+            ));
         }
 
         // Discard the cards
         let discarded = self.player.play_cards(card_indices);
         let card_names: Vec<String> = discarded.iter().map(|c| c.display()).collect();
-        self.log(format!("Discarded: {} (Value: {})", card_names.join(", "), value));
+        self.log(format!(
+            "Discarded: {} (Value: {})",
+            card_names.join(", "),
+            value
+        ));
         self.discard_pile.extend(discarded);
 
         Ok(())
@@ -387,8 +405,11 @@ impl Game {
         self.player.draw_multiple(cards);
 
         self.jesters_used += 1;
-        self.log(format!("Used Jester power! Discarded {} cards and drew fresh hand ({} Jesters remaining)",
-            hand_size, self.jester_count - self.jesters_used));
+        self.log(format!(
+            "Used Jester power! Discarded {} cards and drew fresh hand ({} Jesters remaining)",
+            hand_size,
+            self.jester_count - self.jesters_used
+        ));
 
         Ok(())
     }

@@ -59,7 +59,8 @@ impl Enemy {
     }
 
     pub fn name(&self) -> String {
-        format!("{} of {}",
+        format!(
+            "{} of {}",
             match self.card.rank {
                 Rank::Jack => "Jack",
                 Rank::Queen => "Queen",
