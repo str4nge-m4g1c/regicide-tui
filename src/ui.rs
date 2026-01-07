@@ -1,5 +1,6 @@
 use crate::card::Card;
 use crate::game::Game;
+use chrono::Local;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -8,13 +9,13 @@ use ratatui::{
     Frame,
 };
 
-/// Render the main game UI with 2 rows: Top row (Castle/Battlefield/Log), Bottom row (Hand)
-pub fn render_game(f: &mut Frame, game: &Game, selected_cards: &[usize]) {
-    // Split into top and bottom rows
+/// Render the main game UI with top row (Castle/Battlefield/Log) and bottom row (Hand)
+pub fn render_game(f: &mut Frame, game: &Game, selected_cards: &[usize], log_scroll_offset: usize, action_prompt: &str) {
+    // Split into top row and bottom row
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Percentage(60), // Top row
+            Constraint::Percentage(60), // Top row (Castle/Battlefield/Log)
             Constraint::Percentage(40), // Bottom row (Hand)
         ])
         .split(f.area());
@@ -31,13 +32,39 @@ pub fn render_game(f: &mut Frame, game: &Game, selected_cards: &[usize]) {
 
     // Render each pane
     render_castle(f, top_chunks[0], game);
-    render_battlefield(f, top_chunks[1], game);
-    render_log(f, top_chunks[2], game);
+    render_battlefield(f, top_chunks[1], game, action_prompt);
+    render_log(f, top_chunks[2], game, log_scroll_offset);
     render_hand(f, main_chunks[1], game, selected_cards);
 }
 
-/// Render the Castle pane (current enemy)
+/// Render the Castle pane (current enemy) with clock on top
 fn render_castle(f: &mut Frame, area: Rect, game: &Game) {
+    // Split into clock and castle
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),    // Clock
+            Constraint::Min(10),      // Castle
+        ])
+        .split(area);
+
+    // Render clock
+    let now = Local::now();
+    let time_str = now.format("%Y-%m-%d %H:%M:%S").to_string();
+    let clock_block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::White));
+    let clock_text = Paragraph::new(Span::styled(
+        time_str,
+        Style::default()
+            .fg(Color::Cyan)
+            .add_modifier(Modifier::BOLD),
+    ))
+    .block(clock_block)
+    .alignment(Alignment::Center);
+    f.render_widget(clock_text, chunks[0]);
+
+    // Render castle
     let block = Block::default()
         .title("⚔ The Castle ⚔")
         .borders(Borders::ALL)
@@ -85,17 +112,27 @@ fn render_castle(f: &mut Frame, area: Rect, game: &Game) {
             .block(block)
             .alignment(Alignment::Center);
 
-        f.render_widget(paragraph, area);
+        f.render_widget(paragraph, chunks[1]);
     } else {
         let paragraph = Paragraph::new("No enemy")
             .block(block)
             .alignment(Alignment::Center);
-        f.render_widget(paragraph, area);
+        f.render_widget(paragraph, chunks[1]);
     }
 }
 
 /// Render the Battlefield pane (played cards, shields, damage)
-fn render_battlefield(f: &mut Frame, area: Rect, game: &Game) {
+fn render_battlefield(f: &mut Frame, area: Rect, game: &Game, action_prompt: &str) {
+    // Split battlefield into main area and action prompt at bottom
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Min(10),      // Main battlefield info
+            Constraint::Length(3),    // Action prompt frame
+        ])
+        .split(area);
+
+    // Render main battlefield area
     let block = Block::default()
         .title("⚡ The Battlefield ⚡")
         .borders(Borders::ALL)
@@ -141,7 +178,24 @@ fn render_battlefield(f: &mut Frame, area: Rect, game: &Game) {
         .block(block)
         .alignment(Alignment::Center);
 
-    f.render_widget(paragraph, area);
+    f.render_widget(paragraph, chunks[0]);
+
+    // Render action prompt at bottom
+    let prompt_block = Block::default()
+        .title("⚡ Next Action ⚡")
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Yellow));
+
+    let prompt_text = Paragraph::new(Span::styled(
+        action_prompt,
+        Style::default()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD),
+    ))
+    .block(prompt_block)
+    .alignment(Alignment::Center);
+
+    f.render_widget(prompt_text, chunks[1]);
 }
 
 /// Render the Hand pane (player's cards)
@@ -243,18 +297,23 @@ fn render_hand(f: &mut Frame, area: Rect, game: &Game, selected_cards: &[usize])
 }
 
 /// Render the Log pane (game events)
-fn render_log(f: &mut Frame, area: Rect, game: &Game) {
+fn render_log(f: &mut Frame, area: Rect, game: &Game, scroll_offset: usize) {
     let block = Block::default()
-        .title("📜 Game Log")
+        .title("📜 Game Log (↑↓ to scroll)")
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Magenta));
 
-    let log_items: Vec<ListItem> = game
-        .game_log
+    // Calculate how many lines can fit in the area (subtract 2 for borders)
+    let available_height = area.height.saturating_sub(2) as usize;
+    let max_items = available_height.min(100);
+
+    // Get log items with scroll offset
+    let total_logs = game.game_log.len();
+    let start_idx = scroll_offset.min(total_logs.saturating_sub(max_items));
+    let end_idx = (start_idx + max_items).min(total_logs);
+
+    let log_items: Vec<ListItem> = game.game_log[start_idx..end_idx]
         .iter()
-        .rev()
-        .take(5)
-        .rev()
         .map(|msg| ListItem::new(msg.clone()))
         .collect();
 

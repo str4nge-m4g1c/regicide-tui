@@ -2,6 +2,7 @@ use crate::card::{Card, Suit};
 use crate::deck::Deck;
 use crate::enemy::Enemy;
 use crate::player::Player;
+use chrono::Local;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -77,9 +78,15 @@ impl Game {
         }
     }
 
-    /// Add a message to the game log
+    /// Add a message to the game log (limited to 100 entries)
     pub fn log<S: Into<String>>(&mut self, message: S) {
-        self.game_log.push(message.into());
+        let timestamp = Local::now().format("%H:%M:%S");
+        let log_entry = format!("[{}] {}", timestamp, message.into());
+        self.game_log.push(log_entry);
+        // Keep only the last 100 log entries
+        if self.game_log.len() > 100 {
+            self.game_log.remove(0);
+        }
     }
 
     /// Validate if cards can be played together

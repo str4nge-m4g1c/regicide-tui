@@ -26,6 +26,7 @@ struct App {
     selected_cards: Vec<usize>,
     state: AppState,
     show_help: bool,
+    log_scroll_offset: usize,
 }
 
 impl App {
@@ -35,7 +36,25 @@ impl App {
             selected_cards: Vec::new(),
             state: AppState::Playing,
             show_help: false,
+            log_scroll_offset: 0,
         }
+    }
+
+    fn scroll_log_up(&mut self) {
+        if self.log_scroll_offset > 0 {
+            self.log_scroll_offset -= 1;
+        }
+    }
+
+    fn scroll_log_down(&mut self) {
+        let max_scroll = self.game.game_log.len().saturating_sub(10);
+        if self.log_scroll_offset < max_scroll {
+            self.log_scroll_offset += 1;
+        }
+    }
+
+    fn reset_log_scroll(&mut self) {
+        self.log_scroll_offset = 0;
     }
 
     fn toggle_card_selection(&mut self, index: usize) {
@@ -53,6 +72,7 @@ impl App {
     fn play_selected_cards(&mut self) {
         if self.selected_cards.is_empty() {
             self.game.log("No cards selected");
+            self.reset_log_scroll();
             return;
         }
 
@@ -62,6 +82,7 @@ impl App {
         match self.game.play_cards(self.selected_cards.clone()) {
             Ok(_) => {
                 self.selected_cards.clear();
+                self.reset_log_scroll();
 
                 // Check game state
                 match self.game.game_state {
@@ -78,6 +99,7 @@ impl App {
 
                 // Transition to discard phase (enemy attack)
                 if let Ok(damage) = self.game.enemy_attack() {
+                    self.reset_log_scroll();
                     if damage > 0 {
                         // Check if player can survive
                         if !self.game.player.can_survive(damage) {
@@ -96,14 +118,17 @@ impl App {
             }
             Err(e) => {
                 self.game.log(format!("Error: {}", e));
+                self.reset_log_scroll();
             }
         }
     }
 
     fn yield_turn(&mut self) {
         if self.game.yield_turn().is_ok() {
+            self.reset_log_scroll();
             // Transition to discard phase
             if let Ok(damage) = self.game.enemy_attack() {
+                self.reset_log_scroll();
                 if damage > 0 {
                     if !self.game.player.can_survive(damage) {
                         self.state = AppState::Defeat("Cannot survive enemy attack!".to_string());
@@ -122,6 +147,7 @@ impl App {
     fn discard_selected_cards(&mut self, _required: u8) {
         if self.selected_cards.is_empty() {
             self.game.log("No cards selected to discard");
+            self.reset_log_scroll();
             return;
         }
 
@@ -130,20 +156,43 @@ impl App {
         match self.game.discard_to_survive(self.selected_cards.clone()) {
             Ok(_) => {
                 self.selected_cards.clear();
+                self.reset_log_scroll();
                 self.state = AppState::Playing;
+                self.game.log("Survived enemy attack! New turn begins.");
+                self.reset_log_scroll();
             }
             Err(e) => {
                 self.game.log(format!("Error: {}", e));
+                self.reset_log_scroll();
             }
         }
     }
 
     fn use_jester(&mut self) {
         match self.game.use_jester() {
-            Ok(_) => {}
+            Ok(_) => {
+                self.reset_log_scroll();
+            }
             Err(e) => {
                 self.game.log(format!("Error: {}", e));
+                self.reset_log_scroll();
             }
+        }
+    }
+
+    fn get_action_prompt(&self) -> String {
+        match &self.state {
+            AppState::Playing => {
+                "Select cards (1-8) and press Enter to play, or Space to yield".to_string()
+            }
+            AppState::DiscardPhase { required_damage } => {
+                format!(
+                    "Enemy attacks! Discard cards worth {} value or more",
+                    required_damage
+                )
+            }
+            AppState::Victory => "Victory!".to_string(),
+            AppState::Defeat(_) => "Defeat!".to_string(),
         }
     }
 }
@@ -197,7 +246,8 @@ fn run_app<B: ratatui::backend::Backend>(
                     ui::render_defeat(f, reason);
                 }
                 _ => {
-                    ui::render_game(f, &app.game, &app.selected_cards);
+                    let action_prompt = app.get_action_prompt();
+                    ui::render_game(f, &app.game, &app.selected_cards, app.log_scroll_offset, &action_prompt);
                 }
             }
         })?;
@@ -212,6 +262,14 @@ fn run_app<B: ratatui::backend::Backend>(
                 KeyCode::Char('q') => return Ok(()),
                 KeyCode::Char('h') => {
                     app.show_help = !app.show_help;
+                    continue;
+                }
+                KeyCode::Up => {
+                    app.scroll_log_up();
+                    continue;
+                }
+                KeyCode::Down => {
+                    app.scroll_log_down();
                     continue;
                 }
                 _ => {}
