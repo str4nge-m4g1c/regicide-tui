@@ -1,3 +1,5 @@
+[![Release](https://github.com/str4nge-m4g1c/kingslayer/actions/workflows/release.yml/badge.svg)](https://github.com/str4nge-m4g1c/kingslayer/actions/workflows/release.yml)
+
 # Kingslayer (Regicide TUI)
 
 A Terminal User Interface (TUI) implementation of the cooperative card game **Regicide**, built in Rust with Ratatui.
@@ -27,6 +29,7 @@ Download the latest release for your platform from the [Releases page](https://g
 - **Windows (x86_64)**: `kingslayer-windows-x86_64.zip`
 
 Extract and run:
+
 ```bash
 # macOS/Linux
 tar -xzf kingslayer-*.tar.gz
@@ -39,6 +42,7 @@ sudo mv kingslayer /usr/local/bin/
 ### From Source
 
 **Prerequisites:**
+
 - Rust 1.88+ (run `rustup update` to upgrade)
 - A terminal with Unicode support
 
@@ -83,11 +87,13 @@ cargo run --release
 The game interface is divided into two rows:
 
 **Top Row (Castle, Battlefield, Game Log):**
+
 - **Castle (Left)**: Current enemy card with HP bar and attack stats
 - **Battlefield (Middle)**: Active shields, total damage, and deck counts
 - **Game Log (Right)**: Recent game events and actions
 
 **Bottom Row (Your Hand):**
+
 - ASCII art cards displayed horizontally
 - Card numbers (1-8) shown below each card
 - Card values displayed at the bottom
@@ -174,6 +180,7 @@ cargo clippy
 ## Roadmap
 
 ### Phase 1: Solo Play ✅ (Complete)
+
 - [x] Core game mechanics and rules
 - [x] Full suit power implementation (Hearts, Diamonds, Clubs, Spades)
 - [x] Enemy AI with immunity system
@@ -184,6 +191,7 @@ cargo clippy
 - [x] Terminal UI with 2-row layout (Castle/Battlefield/Log, Hand)
 
 ### Phase 2: Multiplayer (Planned)
+
 - [ ] **Network Layer**
   - [ ] TCP-based networking with Tokio
   - [ ] Host/Client architecture
@@ -203,6 +211,7 @@ cargo clippy
   - [ ] Host lobby with connection info (IP/Port)
 
 ### Phase 3: Polish & Quality of Life (Future)
+
 - [ ] Save/Load game state
 - [ ] Game replay system
 - [ ] Statistics tracking (wins, losses, average Jester usage)
@@ -213,6 +222,7 @@ cargo clippy
 - [ ] Spectator mode for multiplayer games
 
 ### Phase 4: Advanced Features (Future)
+
 - [ ] Online matchmaking (beyond LAN)
 - [ ] Replay sharing
 - [ ] Tournament mode
@@ -233,3 +243,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Regicide** card game designed by Paul Abrahams, Luke Badger, and Andy Richdale
 - Built with [Ratatui](https://github.com/ratatui-org/ratatui) for the TUI
 - ASCII art card rendering inspired by classic terminal games
+
