@@ -5,6 +5,11 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build release for (e.g., v1.0.0)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -16,10 +21,20 @@ jobs:
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       version: ${{ steps.get_version.outputs.version }}
+      tag_name: ${{ steps.get_tag.outputs.tag_name }}
     steps:
+      - name: Determine tag name
+        id: get_tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag_name=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Get version from tag
         id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: echo "version=${{ steps.get_tag.outputs.tag_name }}" | sed 's/^v//' >> $GITHUB_OUTPUT
 
       - name: Create Release
         id: create_release
@@ -27,8 +42,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Kingslayer ${{ github.ref }}
+          tag_name: ${{ steps.get_tag.outputs.tag_name }}
+          release_name: Kingslayer ${{ steps.get_tag.outputs.tag_name }}
           draft: false
           prerelease: false
           body: |
@@ -69,6 +84,8 @@ jobs:
             asset_name: kingslayer-windows-x86_64.exe
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-release.outputs.tag_name }}
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
