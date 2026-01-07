@@ -18,7 +18,8 @@ enum AppState {
     Playing,
     DiscardPhase { required_damage: u8 },
     Victory,
-    Defeat(String),
+    Defeat,
+    RestartConfirmation,
 }
 
 struct App {
@@ -27,6 +28,7 @@ struct App {
     state: AppState,
     show_help: bool,
     log_scroll_offset: usize,
+    guide_scroll_offset: usize,
 }
 
 impl App {
@@ -37,6 +39,7 @@ impl App {
             state: AppState::Playing,
             show_help: false,
             log_scroll_offset: 0,
+            guide_scroll_offset: 0,
         }
     }
 
@@ -54,7 +57,30 @@ impl App {
     }
 
     fn reset_log_scroll(&mut self) {
+        // Auto-scroll to bottom (latest logs)
+        let total_logs = self.game.game_log.len();
+        self.log_scroll_offset = total_logs.saturating_sub(1);
+    }
+
+    fn scroll_guide_up(&mut self) {
+        if self.guide_scroll_offset > 0 {
+            self.guide_scroll_offset -= 1;
+        }
+    }
+
+    fn scroll_guide_down(&mut self, max_lines: usize) {
+        let max_scroll = max_lines.saturating_sub(10);
+        if self.guide_scroll_offset < max_scroll {
+            self.guide_scroll_offset += 1;
+        }
+    }
+
+    fn restart_game(&mut self) {
+        self.game = Game::new_solo();
+        self.selected_cards.clear();
+        self.state = AppState::Playing;
         self.log_scroll_offset = 0;
+        self.guide_scroll_offset = 0;
     }
 
     fn toggle_card_selection(&mut self, index: usize) {
@@ -80,7 +106,7 @@ impl App {
         self.selected_cards.sort_unstable();
 
         match self.game.play_cards(self.selected_cards.clone()) {
-            Ok(_) => {
+            Ok(enemy_defeated) => {
                 self.selected_cards.clear();
                 self.reset_log_scroll();
 
@@ -90,30 +116,33 @@ impl App {
                         self.state = AppState::Victory;
                         return;
                     }
-                    GameState::Defeat(ref reason) => {
-                        self.state = AppState::Defeat(reason.clone());
+                    GameState::Defeat(_) => {
+                        self.state = AppState::Defeat;
                         return;
                     }
                     _ => {}
                 }
 
-                // Transition to discard phase (enemy attack)
-                if let Ok(damage) = self.game.enemy_attack() {
-                    self.reset_log_scroll();
-                    if damage > 0 {
-                        // Check if player can survive
-                        if !self.game.player.can_survive(damage) {
-                            self.state =
-                                AppState::Defeat("Cannot survive enemy attack!".to_string());
-                            self.game.game_state =
-                                GameState::Defeat("Cannot survive enemy attack!".to_string());
-                        } else {
-                            self.state = AppState::DiscardPhase {
-                                required_damage: damage,
-                            };
+                // Only enemy attacks if no enemy was defeated
+                // (If enemy was defeated, new enemy appears and waits for player's turn)
+                if !enemy_defeated {
+                    // Transition to discard phase (enemy attack)
+                    if let Ok(damage) = self.game.enemy_attack() {
+                        self.reset_log_scroll();
+                        if damage > 0 {
+                            // Check if player can survive
+                            if !self.game.player.can_survive(damage) {
+                                self.state = AppState::Defeat;
+                                self.game.game_state =
+                                    GameState::Defeat("Cannot survive enemy attack!".to_string());
+                            } else {
+                                self.state = AppState::DiscardPhase {
+                                    required_damage: damage,
+                                };
+                            }
                         }
+                        // If damage is 0, continue to next turn
                     }
-                    // If damage is 0, continue to next turn
                 }
             }
             Err(e) => {
@@ -131,7 +160,7 @@ impl App {
                 self.reset_log_scroll();
                 if damage > 0 {
                     if !self.game.player.can_survive(damage) {
-                        self.state = AppState::Defeat("Cannot survive enemy attack!".to_string());
+                        self.state = AppState::Defeat;
                         self.game.game_state =
                             GameState::Defeat("Cannot survive enemy attack!".to_string());
                     } else {
@@ -191,8 +220,9 @@ impl App {
                     required_damage
                 )
             }
-            AppState::Victory => "Victory!".to_string(),
-            AppState::Defeat(_) => "Defeat!".to_string(),
+            AppState::Victory => "Press 'r' to Restart or 'q' to Quit".to_string(),
+            AppState::Defeat => "Press 'r' to Restart or 'q' to Quit".to_string(),
+            AppState::RestartConfirmation => "Restart game? Press 'y' to confirm or 'n' to cancel".to_string(),
         }
     }
 }
@@ -238,18 +268,8 @@ fn run_app<B: ratatui::backend::Backend>(
                 return;
             }
 
-            match &app.state {
-                AppState::Victory => {
-                    ui::render_victory(f, &app.game);
-                }
-                AppState::Defeat(reason) => {
-                    ui::render_defeat(f, reason);
-                }
-                _ => {
-                    let action_prompt = app.get_action_prompt();
-                    ui::render_game(f, &app.game, &app.selected_cards, app.log_scroll_offset, &action_prompt);
-                }
-            }
+            let action_prompt = app.get_action_prompt();
+            ui::render_game(f, &app.game, &app.selected_cards, app.log_scroll_offset, app.guide_scroll_offset, &action_prompt);
         })?;
 
         if let Event::Key(key) = event::read()? {
@@ -270,6 +290,15 @@ fn run_app<B: ratatui::backend::Backend>(
                 }
                 KeyCode::Down => {
                     app.scroll_log_down();
+                    continue;
+                }
+                KeyCode::Left => {
+                    app.scroll_guide_up();
+                    continue;
+                }
+                KeyCode::Right => {
+                    let guide_line_count = ui::get_game_guide_line_count();
+                    app.scroll_guide_down(guide_line_count);
                     continue;
                 }
                 _ => {}
@@ -298,6 +327,9 @@ fn run_app<B: ratatui::backend::Backend>(
                     KeyCode::Char('j') => {
                         app.use_jester();
                     }
+                    KeyCode::Char('r') => {
+                        app.state = AppState::RestartConfirmation;
+                    }
                     _ => {}
                 },
                 AppState::DiscardPhase { required_damage } => match key.code {
@@ -311,11 +343,27 @@ fn run_app<B: ratatui::backend::Backend>(
                     KeyCode::Enter => {
                         app.discard_selected_cards(*required_damage);
                     }
+                    KeyCode::Char('r') => {
+                        app.state = AppState::RestartConfirmation;
+                    }
                     _ => {}
                 },
-                AppState::Victory | AppState::Defeat(_) => {
-                    // Only 'q' works in these states (handled globally)
-                }
+                AppState::Victory | AppState::Defeat => match key.code {
+                    KeyCode::Char('r') => {
+                        app.restart_game();
+                    }
+                    _ => {}
+                },
+                AppState::RestartConfirmation => match key.code {
+                    KeyCode::Char('y') | KeyCode::Char('Y') => {
+                        app.restart_game();
+                    }
+                    KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
+                        // Return to previous state - we'll just set to Playing
+                        app.state = AppState::Playing;
+                    }
+                    _ => {}
+                },
             }
         }
     }

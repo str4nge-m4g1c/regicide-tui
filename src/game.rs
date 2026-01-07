@@ -124,15 +124,21 @@ impl Game {
                 return Ok(()); // Ace + one other card is valid
             } else if cards.len() == 2 && ace_count == 2 {
                 return Ok(()); // Ace + Ace is valid
-            } else {
+            } else if cards.len() > 2 {
                 return Err("Ace can only be paired with one other card".to_string());
             }
+            // If we get here, we have aces but not in valid combo - fall through to same-rank check
         }
 
         // Combo: 2-4 cards of same rank, total <= 10
+        // First, ensure we don't have more than 4 cards
+        if cards.len() > 4 {
+            return Err("Cannot play more than 4 cards at once".to_string());
+        }
+
         let first_rank = cards[0].rank;
         if !cards.iter().all(|c| c.rank == first_rank) {
-            return Err("Combo cards must all have the same rank".to_string());
+            return Err("Combo cards must all have the same rank (or use Ace + 1 card)".to_string());
         }
 
         let total: u8 = cards.iter().map(|c| c.value()).sum();
@@ -144,7 +150,8 @@ impl Game {
     }
 
     /// Play cards from hand (Step 1 & 2)
-    pub fn play_cards(&mut self, card_indices: Vec<usize>) -> Result<(), String> {
+    /// Returns true if enemy was defeated (and a new one appeared)
+    pub fn play_cards(&mut self, card_indices: Vec<usize>) -> Result<bool, String> {
         // Validate the play
         self.validate_play(&card_indices)?;
 
@@ -165,8 +172,11 @@ impl Game {
             }
             self.discard_pile.extend(cards);
             // Jester skips to choosing next player (in solo, continue)
-            return Ok(());
+            return Ok(false);
         }
+
+        // Store current enemy for comparison
+        let enemy_before = self.current_enemy.as_ref().map(|e| e.card.clone());
 
         // Log the play
         let card_names: Vec<String> = cards.iter().map(|c| c.display()).collect();
@@ -185,7 +195,10 @@ impl Game {
         // Deal damage (Step 3)
         self.deal_damage(attack_value)?;
 
-        Ok(())
+        // Check if enemy was defeated (new enemy appeared)
+        let enemy_defeated = enemy_before != self.current_enemy.as_ref().map(|e| e.card.clone());
+
+        Ok(enemy_defeated)
     }
 
     /// Apply suit powers to the cards played
@@ -419,14 +432,5 @@ impl Game {
         ));
 
         Ok(())
-    }
-
-    /// Get victory rank for solo mode
-    pub fn victory_rank(&self) -> &str {
-        match self.jesters_used {
-            0 => "Gold",
-            1 => "Silver",
-            _ => "Bronze",
-        }
     }
 }
