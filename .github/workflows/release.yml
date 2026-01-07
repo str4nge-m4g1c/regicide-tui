@@ -3,7 +3,8 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -36,12 +37,6 @@ jobs:
             A Terminal User Interface implementation of the cooperative card game Regicide.
 
             ## Installation
-
-            ### Homebrew (macOS/Linux)
-            ```bash
-            brew tap str4nge-m4g1c/kingslayer
-            brew install kingslayer
-            ```
 
             ### Manual Installation
             Download the appropriate binary for your platform below, make it executable, and place it in your PATH.
@@ -121,13 +116,3 @@ jobs:
           asset_path: ./${{ matrix.asset_name }}.zip
           asset_name: ${{ matrix.asset_name }}.zip
           asset_content_type: application/zip
-
-  update-homebrew:
-    name: Update Homebrew Formula
-    needs: [create-release, build-release]
-    runs-on: macos-latest
-    steps:
-      - name: Trigger Homebrew tap update
-        run: |
-          echo "Release created. Update homebrew-kingslayer tap manually with new version ${{ needs.create-release.outputs.version }}"
-          echo "Or use: brew bump-formula-pr --url=https://github.com/${{ github.repository }}/archive/${{ github.ref_name }}.tar.gz"
