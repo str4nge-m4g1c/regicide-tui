@@ -175,7 +175,28 @@ impl Game {
         if cards[0].is_jester() {
             self.log("Played Jester - Enemy immunity cancelled!");
             if let Some(ref mut enemy) = self.current_enemy {
+                let enemy_suit = enemy.card.suit;
                 enemy.cancel_immunity();
+
+                // Special rule: If Jester played against Spades enemy,
+                // retroactively apply all previously blocked Spades to shield
+                if enemy_suit == Suit::Spades {
+                    // Add shield value for each Spades card that was blocked
+                    let retroactive_shield: u8 = self
+                        .played_cards
+                        .iter()
+                        .filter(|c| c.suit == Suit::Spades)
+                        .map(|c| c.value())
+                        .sum();
+
+                    if retroactive_shield > 0 {
+                        self.shield_value += retroactive_shield;
+                        self.log(format!(
+                            "Spades now active! Shield increased by {} (Total: {})",
+                            retroactive_shield, self.shield_value
+                        ));
+                    }
+                }
             }
             self.discard_pile.extend(cards);
             // Jester skips Steps 3 and 4 (dealt damage and suffer damage)
@@ -560,5 +581,49 @@ mod tests {
         let result = game.use_jester();
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "No Jesters remaining");
+    }
+
+    #[test]
+    fn test_jester_retroactive_spades() {
+        // Test that Spades played before Jester against Spades enemy apply retroactively
+        let mut game = Game::new_solo();
+
+        // Setup: Enemy is Jack of Spades
+        game.current_enemy = Some(Enemy::new(Card::new(Suit::Spades, Rank::Jack)));
+
+        // Setup player hand: 5♠, Jester, 5♥
+        game.player.hand.clear();
+        game.player.hand.push(Card::new(Suit::Spades, Rank::Five));
+        game.player.hand.push(Card::new(Suit::Hearts, Rank::Jester));
+        game.player.hand.push(Card::new(Suit::Hearts, Rank::Five));
+
+        // Turn 1: Play 5 of Spades against Jack of Spades
+        // Should be blocked by immunity, shield stays 0
+        let result = game.play_cards(vec![0]);
+        assert!(result.is_ok());
+        assert_eq!(game.shield_value, 0, "Shield should be 0 (blocked by immunity)");
+        assert_eq!(game.played_cards.len(), 1, "One card in played_cards");
+
+        // Turn 2: Play Jester to cancel immunity
+        let result = game.play_cards(vec![0]);
+        assert!(result.is_ok());
+        assert_eq!(
+            game.current_enemy.as_ref().unwrap().immunity_cancelled,
+            true,
+            "Immunity should be cancelled"
+        );
+        // Shield should now include the retroactive Spades (value 5)
+        assert_eq!(game.shield_value, 5, "Shield should retroactively include the 5♠");
+
+        // Turn 3: Play 5 of Hearts, enemy should attack with reduced damage
+        let result = game.play_cards(vec![0]);
+        assert!(result.is_ok());
+
+        // Enemy attack should be reduced: Jack attacks for 10, shield is 5, so 5 damage
+        let enemy_attack = game.current_enemy.as_ref().unwrap().get_attack_after_shields(game.shield_value);
+        assert_eq!(
+            enemy_attack, 5,
+            "Enemy attack should be 5 (10 - 5 shield)"
+        );
     }
 }
