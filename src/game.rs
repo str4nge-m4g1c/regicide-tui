@@ -24,8 +24,8 @@ pub struct Game {
     pub total_damage: u8, // Total damage dealt to current enemy
     pub game_state: GameState,
     pub game_log: Vec<String>,
-    pub jester_count: u8,         // For solo mode
-    pub jesters_used: u8,         // For solo mode
+    pub jester_count: u8,              // For solo mode
+    pub jesters_used: u8,              // For solo mode
     pub jester_played_this_turn: bool, // Track if Jester was played to skip Step 4
 }
 
@@ -492,7 +492,10 @@ mod tests {
         assert_eq!(game.jester_played_this_turn, true);
 
         // Immunity should be cancelled
-        assert_eq!(game.current_enemy.as_ref().unwrap().immunity_cancelled, true);
+        assert_eq!(
+            game.current_enemy.as_ref().unwrap().immunity_cancelled,
+            true
+        );
     }
 
     #[test]
@@ -601,7 +604,10 @@ mod tests {
         // Should be blocked by immunity, shield stays 0
         let result = game.play_cards(vec![0]);
         assert!(result.is_ok());
-        assert_eq!(game.shield_value, 0, "Shield should be 0 (blocked by immunity)");
+        assert_eq!(
+            game.shield_value, 0,
+            "Shield should be 0 (blocked by immunity)"
+        );
         assert_eq!(game.played_cards.len(), 1, "One card in played_cards");
 
         // Turn 2: Play Jester to cancel immunity
@@ -613,18 +619,22 @@ mod tests {
             "Immunity should be cancelled"
         );
         // Shield should now include the retroactive Spades (value 5)
-        assert_eq!(game.shield_value, 5, "Shield should retroactively include the 5♠");
+        assert_eq!(
+            game.shield_value, 5,
+            "Shield should retroactively include the 5♠"
+        );
 
         // Turn 3: Play 5 of Hearts, enemy should attack with reduced damage
         let result = game.play_cards(vec![0]);
         assert!(result.is_ok());
 
         // Enemy attack should be reduced: Jack attacks for 10, shield is 5, so 5 damage
-        let enemy_attack = game.current_enemy.as_ref().unwrap().get_attack_after_shields(game.shield_value);
-        assert_eq!(
-            enemy_attack, 5,
-            "Enemy attack should be 5 (10 - 5 shield)"
-        );
+        let enemy_attack = game
+            .current_enemy
+            .as_ref()
+            .unwrap()
+            .get_attack_after_shields(game.shield_value);
+        assert_eq!(enemy_attack, 5, "Enemy attack should be 5 (10 - 5 shield)");
     }
 
     #[test]
@@ -667,7 +677,9 @@ mod tests {
         game.player.hand.clear();
         game.player.hand.push(Card::new(Suit::Clubs, Rank::Three));
         game.player.hand.push(Card::new(Suit::Hearts, Rank::Three));
-        game.player.hand.push(Card::new(Suit::Diamonds, Rank::Three));
+        game.player
+            .hand
+            .push(Card::new(Suit::Diamonds, Rank::Three));
 
         // Play combo: 3♣ + 3♥ + 3♦ = 9 attack, doubled to 18 due to Clubs
         let result = game.play_cards(vec![0, 1, 2]);
@@ -716,7 +728,11 @@ mod tests {
         use crate::deck::Deck;
 
         let tavern = Deck::create_tavern_deck(0); // 0 Jesters for solo
-        assert_eq!(tavern.len(), 40, "Tavern deck should have 40 cards for solo");
+        assert_eq!(
+            tavern.len(),
+            40,
+            "Tavern deck should have 40 cards for solo"
+        );
 
         // Count card types
         let mut aces = 0;
@@ -724,8 +740,15 @@ mod tests {
         for card in &tavern.cards {
             match card.rank {
                 Rank::Ace => aces += 1,
-                Rank::Two | Rank::Three | Rank::Four | Rank::Five | Rank::Six
-                | Rank::Seven | Rank::Eight | Rank::Nine | Rank::Ten => numbered += 1,
+                Rank::Two
+                | Rank::Three
+                | Rank::Four
+                | Rank::Five
+                | Rank::Six
+                | Rank::Seven
+                | Rank::Eight
+                | Rank::Nine
+                | Rank::Ten => numbered += 1,
                 _ => {}
             }
         }
@@ -830,7 +853,11 @@ mod tests {
         assert!(result.is_ok());
 
         // Tavern deck should NOT increase (Hearts power blocked)
-        assert_eq!(game.tavern_deck.len(), tavern_before, "Hearts power should be blocked");
+        assert_eq!(
+            game.tavern_deck.len(),
+            tavern_before,
+            "Hearts power should be blocked"
+        );
     }
 
     #[test]
@@ -847,7 +874,10 @@ mod tests {
         let result = game.play_cards(vec![0, 1]);
         assert!(result.is_ok());
         // Ace (1) + 5 = 6, doubled by Clubs = 12
-        assert_eq!(game.total_damage, 12, "Ace + 5 with Clubs should deal 12 damage");
+        assert_eq!(
+            game.total_damage, 12,
+            "Ace + 5 with Clubs should deal 12 damage"
+        );
     }
 
     #[test]
@@ -858,7 +888,9 @@ mod tests {
         game.player.hand.clear();
         game.player.hand.push(Card::new(Suit::Hearts, Rank::Three));
         game.player.hand.push(Card::new(Suit::Clubs, Rank::Three));
-        game.player.hand.push(Card::new(Suit::Diamonds, Rank::Three));
+        game.player
+            .hand
+            .push(Card::new(Suit::Diamonds, Rank::Three));
 
         let result = game.validate_play(&[0, 1, 2]);
         assert!(result.is_ok(), "3+3+3 should be valid combo");
@@ -907,7 +939,10 @@ mod tests {
         game.player.hand.push(Card::new(Suit::Hearts, Rank::Two));
 
         // Check if player can survive 10 damage
-        assert!(game.player.can_survive(10), "Player should be able to survive");
+        assert!(
+            game.player.can_survive(10),
+            "Player should be able to survive"
+        );
 
         // Discard to survive
         let result = game.discard_to_survive(vec![0, 1]); // 5 + 5 = 10
@@ -945,7 +980,11 @@ mod tests {
             "2 cards should have been moved from discard to tavern by Hearts"
         );
         // We played 2 cards (hand was 2), drew 2, so hand should be 2
-        assert_eq!(game.player.hand.len(), 2, "Diamonds should have drawn 2 cards");
+        assert_eq!(
+            game.player.hand.len(),
+            2,
+            "Diamonds should have drawn 2 cards"
+        );
 
         // The fact that we successfully drew 2 cards after healing proves Hearts ran first
     }

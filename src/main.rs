@@ -231,7 +231,8 @@ impl App {
     fn get_action_prompt(&self) -> String {
         match &self.state {
             AppState::Playing => {
-                "⚔️  ATTACK: Select cards (1-8) and press Enter to play, or Space to yield".to_string()
+                "⚔️  ATTACK: Select cards (1-8) and press Enter to play, or Space to yield"
+                    .to_string()
             }
             AppState::DiscardPhase { required_damage } => {
                 format!(

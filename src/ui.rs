@@ -346,9 +346,7 @@ fn render_battlefield(f: &mut Frame, area: Rect, game: &Game, action_prompt: &st
     };
 
     // Clean up the text by removing emoji icons
-    let text = action_prompt
-        .replace("⚔️  ", "")
-        .replace("🛡️  ", "");
+    let text = action_prompt.replace("⚔️  ", "").replace("🛡️  ", "");
 
     let prompt_block = Block::default()
         .title("⚡ Next Action ⚡")
