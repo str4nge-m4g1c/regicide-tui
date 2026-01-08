@@ -387,6 +387,10 @@ fn run_app<B: ratatui::backend::Backend>(
                     KeyCode::Enter => {
                         app.discard_selected_cards(*required_damage);
                     }
+                    KeyCode::Char('j') => {
+                        // Solo mode: Use Jester power during discard phase (Step 4)
+                        app.use_jester();
+                    }
                     KeyCode::Char('r') => {
                         app.state = AppState::RestartConfirmation;
                     }

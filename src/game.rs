@@ -514,4 +514,51 @@ mod tests {
         // Jester flag should be reset to false
         assert_eq!(game.jester_played_this_turn, false);
     }
+
+    #[test]
+    fn test_solo_jester_power_at_step_4() {
+        // Test that solo Jester power can be used at start of Step 4 (discard phase)
+        let mut game = Game::new_solo();
+
+        // Setup: Give player only low value cards
+        game.player.hand.clear();
+        game.player.hand.push(Card::new(Suit::Hearts, Rank::Two));
+        game.player.hand.push(Card::new(Suit::Hearts, Rank::Two));
+
+        let jesters_before = game.jesters_used;
+
+        // Use Jester power (simulating Step 4 / discard phase)
+        let result = game.use_jester();
+
+        // Should succeed
+        assert!(result.is_ok());
+
+        // Hand should be refilled to 8 cards
+        assert_eq!(game.player.hand.len(), 8, "Hand should be refilled to 8");
+
+        // Jester count should increment
+        assert_eq!(
+            game.jesters_used,
+            jesters_before + 1,
+            "Jesters used should increment"
+        );
+
+        // Should have 1 Jester remaining (started with 2)
+        assert_eq!(game.jester_count - game.jesters_used, 1);
+    }
+
+    #[test]
+    fn test_solo_jester_power_limit() {
+        // Test that solo Jester power can only be used jester_count times
+        let mut game = Game::new_solo();
+
+        // Use both Jesters
+        assert!(game.use_jester().is_ok());
+        assert!(game.use_jester().is_ok());
+
+        // Third attempt should fail
+        let result = game.use_jester();
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "No Jesters remaining");
+    }
 }
