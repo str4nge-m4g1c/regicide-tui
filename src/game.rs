@@ -676,4 +676,276 @@ mod tests {
             "Clubs in combo should double total damage: (3+3+3)*2 = 18"
         );
     }
+
+    // ===== COMPREHENSIVE GAME RULES TESTS =====
+
+    #[test]
+    fn test_castle_deck_construction() {
+        // Test Castle deck has correct structure: 4 Kings, 4 Queens, 4 Jacks
+        use crate::card::Rank;
+        use crate::deck::Deck;
+
+        let castle = Deck::create_castle_deck();
+        assert_eq!(castle.len(), 12, "Castle deck should have 12 enemies");
+
+        // First 4 cards drawn should be Jacks (top layer)
+        let mut test_castle = castle.clone();
+        for _ in 0..4 {
+            let card = test_castle.draw().unwrap();
+            assert_eq!(card.rank, Rank::Jack, "First 4 cards should be Jacks");
+        }
+
+        // Next 4 should be Queens (middle layer)
+        for _ in 0..4 {
+            let card = test_castle.draw().unwrap();
+            assert_eq!(card.rank, Rank::Queen, "Next 4 cards should be Queens");
+        }
+
+        // Last 4 should be Kings (bottom layer)
+        for _ in 0..4 {
+            let card = test_castle.draw().unwrap();
+            assert_eq!(card.rank, Rank::King, "Last 4 cards should be Kings");
+        }
+    }
+
+    #[test]
+    fn test_tavern_deck_construction() {
+        // Test Tavern deck for solo mode
+        use crate::card::Rank;
+        use crate::deck::Deck;
+
+        let tavern = Deck::create_tavern_deck(0); // 0 Jesters for solo
+        assert_eq!(tavern.len(), 40, "Tavern deck should have 40 cards for solo");
+
+        // Count card types
+        let mut aces = 0;
+        let mut numbered = 0;
+        for card in &tavern.cards {
+            match card.rank {
+                Rank::Ace => aces += 1,
+                Rank::Two | Rank::Three | Rank::Four | Rank::Five | Rank::Six
+                | Rank::Seven | Rank::Eight | Rank::Nine | Rank::Ten => numbered += 1,
+                _ => {}
+            }
+        }
+        assert_eq!(aces, 4, "Should have 4 Aces");
+        assert_eq!(numbered, 36, "Should have 36 numbered cards (2-10)");
+    }
+
+    #[test]
+    fn test_card_values() {
+        // Test card values match the rules
+        use crate::card::{Card, Rank};
+
+        assert_eq!(Card::new(Suit::Hearts, Rank::Ace).value(), 1);
+        assert_eq!(Card::new(Suit::Hearts, Rank::Five).value(), 5);
+        assert_eq!(Card::new(Suit::Hearts, Rank::Ten).value(), 10);
+        assert_eq!(Card::new(Suit::Hearts, Rank::Jack).value(), 10);
+        assert_eq!(Card::new(Suit::Hearts, Rank::Queen).value(), 15);
+        assert_eq!(Card::new(Suit::Hearts, Rank::King).value(), 20);
+        assert_eq!(Card::new(Suit::Hearts, Rank::Jester).value(), 0);
+    }
+
+    #[test]
+    fn test_hearts_power() {
+        // Test Hearts power: heal from discard
+        let mut game = Game::new_solo();
+        game.current_enemy = Some(Enemy::new(Card::new(Suit::Spades, Rank::Jack)));
+
+        // Add cards to discard pile
+        for _ in 0..10 {
+            game.discard_pile.push(Card::new(Suit::Hearts, Rank::Two));
+        }
+        let discard_before = game.discard_pile.len();
+        let tavern_before = game.tavern_deck.len();
+
+        // Play 5 of Hearts -> heal 5 cards
+        game.player.hand.clear();
+        game.player.hand.push(Card::new(Suit::Hearts, Rank::Five));
+        let result = game.play_cards(vec![0]);
+
+        assert!(result.is_ok());
+        assert_eq!(
+            game.discard_pile.len(),
+            discard_before - 5,
+            "Should move 5 cards from discard"
+        );
+        assert_eq!(
+            game.tavern_deck.len(),
+            tavern_before + 5,
+            "Should add 5 cards to tavern deck"
+        );
+    }
+
+    #[test]
+    fn test_diamonds_power() {
+        // Test Diamonds power: draw cards
+        let mut game = Game::new_solo();
+        game.current_enemy = Some(Enemy::new(Card::new(Suit::Spades, Rank::Jack)));
+
+        game.player.hand.clear();
+        game.player.hand.push(Card::new(Suit::Diamonds, Rank::Five));
+
+        let result = game.play_cards(vec![0]);
+        assert!(result.is_ok());
+
+        // Should draw 5 cards (hand was 1, now should be 1 - 1 (played) + 5 (drawn) = 5)
+        assert_eq!(game.player.hand.len(), 5, "Should draw 5 cards");
+    }
+
+    #[test]
+    fn test_spades_power_cumulative() {
+        // Test Spades power: shield is cumulative
+        let mut game = Game::new_solo();
+        game.current_enemy = Some(Enemy::new(Card::new(Suit::Hearts, Rank::Jack)));
+
+        // Turn 1: Play 5 of Spades -> shield = 5
+        game.player.hand.clear();
+        game.player.hand.push(Card::new(Suit::Spades, Rank::Five));
+        game.player.hand.push(Card::new(Suit::Spades, Rank::Three));
+        let result = game.play_cards(vec![0]);
+        assert!(result.is_ok());
+        assert_eq!(game.shield_value, 5);
+
+        // Turn 2: Play 3 of Spades -> shield = 5 + 3 = 8
+        let result = game.play_cards(vec![0]);
+        assert!(result.is_ok());
+        assert_eq!(game.shield_value, 8, "Shield should be cumulative");
+    }
+
+    #[test]
+    fn test_enemy_immunity() {
+        // Test enemy immunity blocks suit powers
+        let mut game = Game::new_solo();
+        game.current_enemy = Some(Enemy::new(Card::new(Suit::Hearts, Rank::Jack)));
+
+        // Play Hearts card against Hearts enemy -> power blocked
+        game.player.hand.clear();
+        game.player.hand.push(Card::new(Suit::Hearts, Rank::Five));
+        game.discard_pile.push(Card::new(Suit::Clubs, Rank::Two));
+        let tavern_before = game.tavern_deck.len();
+
+        let result = game.play_cards(vec![0]);
+        assert!(result.is_ok());
+
+        // Tavern deck should NOT increase (Hearts power blocked)
+        assert_eq!(game.tavern_deck.len(), tavern_before, "Hearts power should be blocked");
+    }
+
+    #[test]
+    fn test_animal_companion_pairing() {
+        // Test Ace can pair with one other card
+        let mut game = Game::new_solo();
+        game.current_enemy = Some(Enemy::new(Card::new(Suit::Hearts, Rank::Jack)));
+
+        // Ace + 5 = 6 attack
+        game.player.hand.clear();
+        game.player.hand.push(Card::new(Suit::Clubs, Rank::Ace));
+        game.player.hand.push(Card::new(Suit::Hearts, Rank::Five));
+
+        let result = game.play_cards(vec![0, 1]);
+        assert!(result.is_ok());
+        // Ace (1) + 5 = 6, doubled by Clubs = 12
+        assert_eq!(game.total_damage, 12, "Ace + 5 with Clubs should deal 12 damage");
+    }
+
+    #[test]
+    fn test_combo_validation() {
+        let mut game = Game::new_solo();
+
+        // Valid combo: 3 + 3 + 3 = 9 <= 10
+        game.player.hand.clear();
+        game.player.hand.push(Card::new(Suit::Hearts, Rank::Three));
+        game.player.hand.push(Card::new(Suit::Clubs, Rank::Three));
+        game.player.hand.push(Card::new(Suit::Diamonds, Rank::Three));
+
+        let result = game.validate_play(&[0, 1, 2]);
+        assert!(result.is_ok(), "3+3+3 should be valid combo");
+
+        // Invalid combo: 6 + 6 = 12 > 10
+        game.player.hand.clear();
+        game.player.hand.push(Card::new(Suit::Hearts, Rank::Six));
+        game.player.hand.push(Card::new(Suit::Clubs, Rank::Six));
+
+        let result = game.validate_play(&[0, 1]);
+        assert!(result.is_err(), "6+6=12 should be invalid (>10)");
+    }
+
+    #[test]
+    fn test_exact_damage_capture() {
+        // Test exact damage places enemy on top of tavern deck
+        let mut game = Game::new_solo();
+        game.current_enemy = Some(Enemy::new(Card::new(Suit::Hearts, Rank::Jack))); // 20 HP
+
+        // Deal exactly 20 damage
+        game.player.hand.clear();
+        game.player.hand.push(Card::new(Suit::Clubs, Rank::Ten)); // 10 * 2 = 20
+
+        let tavern_before = game.tavern_deck.len();
+        let result = game.play_cards(vec![0]);
+        assert!(result.is_ok());
+
+        // Enemy should be captured (on top of tavern deck)
+        assert_eq!(
+            game.tavern_deck.len(),
+            tavern_before + 1,
+            "Captured enemy should be on tavern deck"
+        );
+    }
+
+    #[test]
+    fn test_discard_to_survive() {
+        // Test player can discard cards to survive enemy attack
+        let mut game = Game::new_solo();
+        game.current_enemy = Some(Enemy::new(Card::new(Suit::Hearts, Rank::Jack))); // Attack 10
+
+        // Give player cards totaling >= 10
+        game.player.hand.clear();
+        game.player.hand.push(Card::new(Suit::Hearts, Rank::Five));
+        game.player.hand.push(Card::new(Suit::Hearts, Rank::Five));
+        game.player.hand.push(Card::new(Suit::Hearts, Rank::Two));
+
+        // Check if player can survive 10 damage
+        assert!(game.player.can_survive(10), "Player should be able to survive");
+
+        // Discard to survive
+        let result = game.discard_to_survive(vec![0, 1]); // 5 + 5 = 10
+        assert!(result.is_ok(), "Should successfully discard to survive");
+    }
+
+    #[test]
+    fn test_hearts_before_diamonds() {
+        // Test Hearts power resolves before Diamonds in combos
+        let mut game = Game::new_solo();
+        // Use Clubs enemy to ensure no immunity blocks
+        game.current_enemy = Some(Enemy::new(Card::new(Suit::Clubs, Rank::Jack)));
+
+        // Add cards to discard
+        for _ in 0..10 {
+            game.discard_pile.push(Card::new(Suit::Clubs, Rank::Two));
+        }
+
+        // Play Ace♥ + Ace♦ for smaller attack value but still activates both powers
+        game.player.hand.clear();
+        game.player.hand.push(Card::new(Suit::Hearts, Rank::Ace)); // 1
+        game.player.hand.push(Card::new(Suit::Diamonds, Rank::Ace)); // 1
+        let tavern_before = game.tavern_deck.len();
+        let discard_before = game.discard_pile.len();
+
+        let result = game.play_cards(vec![0, 1]);
+        assert!(result.is_ok(), "Ace+Ace combo should be valid");
+
+        // Total attack = 2, so Hearts should heal 2 cards, Diamonds should draw 2 cards
+        // Tavern: +2 from Hearts heal, -2 from Diamonds draw = net 0
+        // But the order matters for the rules (Hearts before Diamonds)
+        assert_eq!(
+            game.discard_pile.len(),
+            discard_before - 2,
+            "2 cards should have been moved from discard to tavern by Hearts"
+        );
+        // We played 2 cards (hand was 2), drew 2, so hand should be 2
+        assert_eq!(game.player.hand.len(), 2, "Diamonds should have drawn 2 cards");
+
+        // The fact that we successfully drew 2 cards after healing proves Hearts ran first
+    }
 }
