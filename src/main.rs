@@ -20,6 +20,7 @@ enum AppState {
     Victory,
     Defeat,
     RestartConfirmation,
+    QuitConfirmation,
 }
 
 struct App {
@@ -230,11 +231,11 @@ impl App {
     fn get_action_prompt(&self) -> String {
         match &self.state {
             AppState::Playing => {
-                "Select cards (1-8) and press Enter to play, or Space to yield".to_string()
+                "⚔️  ATTACK: Select cards (1-8) and press Enter to play, or Space to yield".to_string()
             }
             AppState::DiscardPhase { required_damage } => {
                 format!(
-                    "Enemy attacks! Discard cards worth {} value or more",
+                    "🛡️  DEFEND: Enemy attacks! Discard cards worth {} value or more",
                     required_damage
                 )
             }
@@ -242,6 +243,9 @@ impl App {
             AppState::Defeat => "Press 'r' to Restart or 'q' to Quit".to_string(),
             AppState::RestartConfirmation => {
                 "Restart game? Press 'y' to confirm or 'n' to cancel".to_string()
+            }
+            AppState::QuitConfirmation => {
+                "Quit game? Press 'y' to confirm or 'n' to cancel".to_string()
             }
         }
     }
@@ -306,7 +310,11 @@ fn run_app<B: ratatui::backend::Backend>(
 
             // Global keys
             match key.code {
-                KeyCode::Char('q') => return Ok(()),
+                KeyCode::Char('q') => {
+                    // Transition to quit confirmation instead of immediately quitting
+                    app.state = AppState::QuitConfirmation;
+                    continue;
+                }
                 KeyCode::Char('h') => {
                     app.show_help = !app.show_help;
                     // Reset help scroll when closing
@@ -407,6 +415,16 @@ fn run_app<B: ratatui::backend::Backend>(
                     }
                     KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
                         // Return to previous state - we'll just set to Playing
+                        app.state = AppState::Playing;
+                    }
+                    _ => {}
+                },
+                AppState::QuitConfirmation => match key.code {
+                    KeyCode::Char('y') | KeyCode::Char('Y') => {
+                        return Ok(()); // Actually quit the game
+                    }
+                    KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
+                        // Return to Playing state
                         app.state = AppState::Playing;
                     }
                     _ => {}
