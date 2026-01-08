@@ -12,9 +12,14 @@ Regicide is a cooperative card game where players work together to defeat 12 pow
 
 - **Phase 1 (Complete)**: Solo play mode against AI
 - Full game logic implementation with all card suit powers
-- Beautiful ASCII TUI with 4-pane layout
+- Beautiful ASCII TUI with enhanced 3-row layout
 - Color-coded cards and game state
 - Victory ranking system (Bronze/Silver/Gold)
+- Real-time clock and session tracking
+- Attack/defend visual indicators
+- Quit confirmation dialog
+- Scrollable game log and help screens
+- Comprehensive test coverage (~20+ unit tests)
 - Phase 2 (Planned): LAN-based multiplayer for 2-4 players
 
 ## Installation
@@ -84,19 +89,24 @@ cargo run --release
 
 ### Game Layout
 
-The game interface is divided into two rows:
+The game interface is divided into three rows:
 
-**Top Row (Castle, Battlefield, Game Log):**
+**Row 1 (Castle, Battlefield, Game Log):**
 
-- **Castle (Left)**: Current enemy card with HP bar and attack stats
-- **Battlefield (Middle)**: Active shields, total damage, and deck counts
-- **Game Log (Right)**: Recent game events and actions
+- **Castle (Left)**: Kingslayer logo with clock, current enemy card with HP bar and attack stats
+- **Battlefield (Middle)**: Active shields, total damage, deck counts, and action prompts with visual indicators
+- **Game Log (Right)**: Scrollable event log of recent game events and actions
 
-**Bottom Row (Your Hand):**
+**Row 2 (Your Hand):**
 
 - ASCII art cards displayed horizontally
 - Card numbers (1-8) shown below each card
 - Card values displayed at the bottom
+
+**Row 3 (Controls & Guide):**
+
+- **Keyboard Actions (Left)**: Available keyboard commands
+- **Game Rules Guide (Right)**: Scrollable quick reference for suit powers and mechanics
 
 ### Game Rules
 
@@ -177,6 +187,30 @@ cargo test
 cargo clippy
 ```
 
+## Recent Updates (v0.2.x)
+
+### Version 0.2.3 (Current)
+
+**Critical Bug Fixes:**
+- Fixed Jester mechanics to correctly skip enemy attack phase (Step 4)
+- Fixed solo Jester power to be usable during discard phase (Step 4)
+- Fixed Spades to retroactively apply when Jester cancels immunity
+- Fixed Clubs power to not persist incorrectly across turns
+
+**UI Enhancements:**
+- Added Kingslayer logo and real-time clock display
+- Enhanced 3-row layout with improved proportions
+- Added attack/defend visual indicators (⚔️ and 🛡️)
+- Added quit confirmation dialog
+- Improved scrolling for game log and help screens
+- Added dedicated keyboard actions panel
+- Added scrollable game rules guide
+
+**Development:**
+- Added comprehensive test coverage (~20+ unit tests)
+- Improved CI/CD workflows
+- Code formatting and linting improvements
+
 ## Roadmap
 
 ### Phase 1: Solo Play ✅ (Complete)
@@ -184,11 +218,14 @@ cargo clippy
 - [x] Core game mechanics and rules
 - [x] Full suit power implementation (Hearts, Diamonds, Clubs, Spades)
 - [x] Enemy AI with immunity system
-- [x] Jester power for solo mode
+- [x] Jester power for solo mode (with critical bug fixes)
 - [x] Victory ranking system (Bronze/Silver/Gold)
 - [x] ASCII card rendering with proper layout
 - [x] Game state management and turn flow
-- [x] Terminal UI with 2-row layout (Castle/Battlefield/Log, Hand)
+- [x] Enhanced terminal UI with 3-row layout
+- [x] Real-time clock and session tracking
+- [x] Scrollable game log and help screens
+- [x] Comprehensive test coverage
 
 ### Phase 2: Multiplayer (Planned)
 

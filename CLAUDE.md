@@ -6,15 +6,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Kingslayer (Regicide TUI)** is a Terminal User Interface implementation of the cooperative card game Regicide. The project is being developed in Rust with a two-phase approach:
 
-- **Phase 1 (MVP)**: Solo play against AI
-- **Phase 2 (Expansion)**: LAN-based multiplayer for 2-4 players
+- **Phase 1 (MVP)**: Solo play against AI ✅ **COMPLETE** (v0.2.3)
+- **Phase 2 (Expansion)**: LAN-based multiplayer for 2-4 players (Planned)
+
+### Current Status (v0.2.3)
+
+Phase 1 is fully implemented with:
+- Complete solo gameplay with all game mechanics
+- Enhanced 3-row TUI layout with real-time clock
+- All suit powers (Hearts, Diamonds, Clubs, Spades) working correctly
+- Jester mechanics with immunity cancellation
+- Victory ranking system (Bronze/Silver/Gold)
+- Comprehensive test coverage (~20+ tests)
+- 4 critical bug fixes implemented and tested
+- Attack/defend visual indicators
+- Scrollable game log and help screens
+- Quit confirmation dialog
 
 ## Tech Stack
 
 - **Language**: Rust
-- **TUI Framework**: Ratatui (recommended)
-- **Networking** (Phase 2): Tokio with standard TCP sockets
-- **Serialization** (Phase 2): JSON for game state exchange
+- **TUI Framework**: Ratatui 0.28 (implemented)
+- **Terminal Control**: Crossterm 0.28 (implemented)
+- **Date/Time**: Chrono 0.4 (implemented for clock display)
+- **Randomization**: Rand 0.8 (implemented for deck shuffling)
+- **Serialization**: Serde + Serde JSON 1.0 (implemented, ready for Phase 2)
+- **Networking** (Phase 2): Tokio with standard TCP sockets (planned)
 
 ## Core Architecture
 
@@ -77,12 +94,19 @@ Each enemy is immune to suit powers (NOT damage) of cards matching their suit. T
 
 ## TUI Layout Design
 
-The terminal must be divided into four panes:
+The terminal is divided into three rows (implemented in v0.2.x):
 
-1. **Top Pane (The Castle)**: Current enemy card (ASCII art), HP bar (e.g., `[||||||||||]`), attack stat
-2. **Middle Pane (The Battlefield)**: Currently played cards, active shield value, damage capability
-3. **Bottom Pane (Hand)**: Player's cards with selection indicators (`> <` or inverted colors)
-4. **Side Pane (Log)**: Scrollable event log (e.g., "Player played 5 of Hearts. Healed 5 cards.")
+**Row 1** - Three columns:
+1. **The Castle (Left)**: Kingslayer logo with real-time clock, current enemy card (ASCII art), HP bar (e.g., `[||||||||||]`), attack stat
+2. **The Battlefield (Middle)**: Currently played cards, active shield value, damage capability, deck counts, action prompts with visual indicators (⚔️ attack, 🛡️ defend)
+3. **Game Log (Right)**: Scrollable event log (e.g., "Player played 5 of Hearts. Healed 5 cards.")
+
+**Row 2** - Full width:
+4. **Hand**: Player's cards with selection indicators (inverted colors for selected cards), card numbers (1-8), and values
+
+**Row 3** - Two columns:
+5. **Keyboard Actions (Left)**: List of available keyboard commands
+6. **Game Rules Guide (Right)**: Scrollable quick reference for suit powers and game mechanics
 
 ### Visual Constraints
 
@@ -97,6 +121,12 @@ The terminal must be divided into four panes:
 '-------'
 ```
 - Use color codes: Red for Hearts/Diamonds, Blue/White for Spades/Clubs
+- Visual indicators implemented:
+  - ⚔️ for attack phase prompts
+  - 🛡️ for defend/discard phase prompts
+  - Inverted colors for selected cards
+  - HP bars with visual fill indicators
+  - Kingslayer logo (⚔ KINGSLAYER ⚔)
 
 ## Phase 2: Multiplayer Architecture
 
@@ -119,13 +149,28 @@ Turn order is clockwise. TUI must display "Waiting for Player X..." when not loc
 
 ## Development Sequence
 
-The PRD recommends this build order:
+Phase 1 implementation (v0.1.0 - v0.2.3):
 
-1. **Data Structures**: Implement `Card`, `Deck`, `Player`, `Enemy` structs. Build `Deck::shuffle()` and `Castle::construct()`.
-2. **TUI Skeleton**: Initialize Ratatui, create 4-pane layout, implement ASCII card renderer.
-3. **Solo Game Loop**: Wire input handling to game logic, implement "discard to survive" calculation.
-4. **Network Layer**: Build Server (Host) and Client classes, implement JSON GameState serializer.
-5. **Polish**: Add colors and ASCII art for face cards (crowns, swords).
+1. **Data Structures** ✅: Implemented `Card`, `Deck`, `Player`, `Enemy` structs. Built `Deck::shuffle()` and castle construction.
+   - Location: `src/card.rs`, `src/deck.rs`, `src/enemy.rs`, `src/player.rs`
+
+2. **TUI Skeleton** ✅: Initialized Ratatui, created enhanced 3-row layout, implemented ASCII card renderer.
+   - Location: `src/ui.rs`, `src/main.rs`
+
+3. **Solo Game Loop** ✅: Wired input handling to game logic, implemented "discard to survive" calculation.
+   - Location: `src/game.rs`, `src/main.rs`
+   - Includes 4 critical bug fixes for game mechanics
+
+4. **Testing** ✅: Added comprehensive unit test coverage (~20+ tests).
+   - Location: `src/game.rs` (test module)
+
+5. **Polish** ✅: Added colors, ASCII art, visual indicators, clock display, scrolling.
+   - Location: `src/ui.rs`
+
+Phase 2 (upcoming):
+
+6. **Network Layer**: Build Server (Host) and Client classes, implement JSON GameState serializer.
+7. **Multiplayer Logic**: Implement turn-based rotation, player state management.
 
 ## Key Implementation Notes
 
@@ -136,6 +181,44 @@ The PRD recommends this build order:
 - **Communication Rules**: In multiplayer, players cannot reveal hand contents. Exception: After Jester is played, players may express desire to go next ("I have a good play" allowed; "I have a 10 of Clubs" forbidden).
 - **Terminal Resizing**: TUI should handle terminal resizing gracefully without breaking layout.
 - **Client Disconnection**: If a client disconnects, host should pause the game.
+
+## Critical Bug Fixes (v0.2.x)
+
+The following bugs were identified and fixed during Phase 1 development:
+
+### Defect #1: Jester Enemy Attack Skip
+**Issue**: When Jester was played, the enemy attack phase (Step 4) was not being skipped correctly.
+**Fix**: Modified game logic to properly skip Step 4 when Jester is played. The game now transitions directly from Step 3 to the next player's turn.
+**Location**: `src/game.rs` - Jester play handling
+
+### Defect #2: Solo Jester Timing
+**Issue**: In solo mode, the Jester power could only be activated at the start of Step 1, not during Step 4 (discard phase) as per rules.
+**Fix**: Added `can_use_jester` check and allowed Jester activation during both Step 1 and Step 4.
+**Location**: `src/game.rs` - Solo Jester power implementation
+
+### Defect #3: Spades Retroactive Application
+**Issue**: When Jester cancelled a Spades enemy's immunity, previously played Spades were not being counted retroactively.
+**Fix**: Implemented tracking of Spades played before Jester, with retroactive application once immunity is cancelled. Shield values are recalculated when Jester is played against Spades enemies.
+**Location**: `src/game.rs` - Shield application logic
+
+### Defect #4: Clubs Power Persistence
+**Issue**: Clubs double damage effect was persisting across turns instead of applying only to the current turn.
+**Fix**: Ensured Clubs multiplier only applies during damage calculation for the current attack, not stored as persistent state. The `clubs_multiplier` is calculated fresh each turn based on cards played.
+**Location**: `src/game.rs` - Damage calculation
+
+## Testing
+
+As of v0.2.3, the project includes comprehensive test coverage (~20+ unit tests) covering:
+- Card and deck operations (shuffling, drawing, construction)
+- Enemy state management and immunity
+- Game state transitions and turn flow
+- Suit power application (Hearts, Diamonds, Clubs, Spades)
+- Jester mechanics and immunity cancellation
+- Victory and defeat conditions
+- Shield persistence and retroactive application
+- Combo validation
+
+Run tests with: `cargo test`
 
 ## Game Balance Data
 
